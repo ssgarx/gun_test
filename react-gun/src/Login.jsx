@@ -11,6 +11,7 @@ function Login({g,u,k}) {
             if(ack.err){
                 return alert(ack.err)
             }
+            alert('logged in success')
             u.get('messages').map().once(async (n)=>{
                 const teamName = await SEA.decrypt(n?.message,k)
                 setTeams((prev)=>[...prev,teamName])
