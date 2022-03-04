@@ -1,11 +1,4 @@
 import React, { useState } from 'react'
-import Gun from "gun";
-import "gun/sea"
-
-const gun = Gun({
-    peers: ["http:localhost:1000/gun"], // Put the relay node that you want here
-});
-
 
 function Login({g,u,k}) {
     const [userName, setUserName] = useState('')

@@ -1,10 +1,15 @@
 import { SEA } from 'gun'
 import React, { useState } from 'react'
+import { useEffect } from 'react'
 
-function Login({g,u,k}) {
+function Login({g,u,k,user_teams}) {
     const [userName, setUserName] = useState('')
     const [password, setPassword] = useState('')
     const [teams, setTeams] = useState([])
+    
+    useEffect(()=>{
+        setTeams(user_teams)
+    },[user_teams])
 
     const handleClick = ()=>{
         u.auth(userName,password,(ack)=>{
@@ -12,9 +17,10 @@ function Login({g,u,k}) {
                 return alert(ack.err)
             }
             alert('logged in success')
-            u.get('messages').map().once(async (n)=>{
-                const teamName = await SEA.decrypt(n?.message,k)
-                setTeams((prev)=>[...prev,teamName])
+            //subscribing to messaged document on user space
+            u.get('teams').map().once(async (n)=>{
+                // const teamName = await SEA.decrypt(n?.team,k)
+                setTeams((prev)=>[...prev,n?.team])
             })
         })
     }
@@ -31,7 +37,18 @@ function Login({g,u,k}) {
             <div>
                 {
                     teams?.map((item,id)=>{
-                        return <p key={id}>{item}</p>
+                        return (
+                            <div >
+                                <h4>{item?.name} - {item?.points}</h4>
+                                {
+                                    item?.players.map((i,idx)=>{
+                                        console.log(idx)
+                                        return <span>{i?.id} - {i?.points} </span>
+                                    })
+                                }
+                            </div>
+
+                        )
                     })
                 }
             </div>
