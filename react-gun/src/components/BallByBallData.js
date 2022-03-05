@@ -47,13 +47,26 @@ let balls_data = [
     }
 ]
 
-function BallByBallData({g,u,k,data,match}) {
+function BallByBallData({g,u,k}) {
+    const [match,setMatch] = useState(1)
+    const [balls,setBalls] = useState([])
 
+    //subscribe for ball by ball data
+    useEffect(()=>{
+        g.get('#match' + match).map().once((data)=>{
+            const d = JSON.parse(data)
+            setBalls((prev)=>[...prev,d])
+        })
+
+    },[])
+
+    //put ball by ball data in frozen space
     const clickHandler = async (index)=>{
         const data = (JSON.stringify(balls_data[index]))
         var hash = await SEA.work(balls_data[index], null, null, {name: "SHA-256"});
         g.get('#match' + match).get(hash).put(data)
     }
+
     return (
         <div>
             <button onClick={()=>clickHandler(0)}>BALL 1</button>
@@ -65,7 +78,7 @@ function BallByBallData({g,u,k,data,match}) {
 
             <div>
                 {
-                    data?.map((item,index)=>{
+                    balls?.map((item,index)=>{
                         return (
                             <div key={index}>
                                     BALL : {item?.ball} &emsp;

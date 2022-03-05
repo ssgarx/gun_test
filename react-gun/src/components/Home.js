@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState , useRef} from "react";
 import { useEffect } from "react";
 import Leaderboard from "../Leaderboard";
 import TestMessage from "../TestMessage";
+require('gun/lib/open')
 
 function Home({ g, u, k }) {
   const [userTeams, setUserTeams] = useState([]);
@@ -9,76 +10,65 @@ function Home({ g, u, k }) {
   const [totalTeams, setTotalTeams] = useState([]);
   const [leaderboardTeams, setLeaderboardTeams] = useState([]);
 
-  const getLeaderboard = async () => {
-    g.get("application")
-      .get("leaderboard")
-      .map()
-      .once(
-        (l, lid) => {
-          setLeaderboardTeams((prev) => [...prev, l]);
-        },
-        { wait: 0 }
-      );
-  };
-
   useEffect(() => {
+    //subscribe for leaderboard update  
+    g.get('application').get('leaderboard').map().on((l,lid)=>{
+      setLeaderboardTeams((prev)=>[...new Set([...prev,l])])
+    })
+
+    //subscribe for user team update along with their players update
     const getTeams = async () => {
       let temp = [];
-
       await u
         .get("teams")
         .map()
-        .once(async (n, id) => {
-          await u
-            .get("teams")
-            .get(id)
-            .get("players")
-            .map()
-            .once((players, id) => {
-              temp.push({
-                id: id,
-                name: players.name,
-                points: players.points,
+        .on(async (n, id) => {
+          console.log(n)
+          if(n){
+            setSelected(true)
+          }
+          setUserTeams([])
+            let temp_ids = new Set()
+            await u
+              .get('teams')
+              .get(id)
+              .get("players")
+              .map()
+              .on((player, id) => {
+                console.log(player)
+                if(!temp_ids.has(id)){
+                  temp_ids.add(id)
+                  temp.push({
+                    id: id,
+                    name: player.name,
+                    points: player.points,
+                  });
+                }
               });
-            });
-
-          //remove duplicates
-          const unique = [...new Set(temp)];
-          setUserTeams(unique);
-          temp = [];
+            setUserTeams((prev)=>[...prev,{players:Array.from(temp),name:n?.name,points:n?.points}]);
+            temp = [];
         });
-      //subscribing to application document in gun db
-      await g
-        .get("application")
-        .get("user_teams") //all teams are registered in this document
-        .map()
-        .once(async (data, sole) => {
-          const unique = [...new Set([...totalTeams, data?.name])];
-          setTotalTeams(unique);
-        });
-
-      await g
-        .get("application")
-        .get("user_teams")
-        .map()
-        .once((_, i) => {
-          g.get(i)
-            .get("players") //all players are registered in this document
-            .map()
-            .on((p, pi) => {
-              // gun.get(pi).put({points:0})
-            });
-        });
-
-      setLeaderboardTeams([]);
-      getLeaderboard();
-    };
+    }
     getTeams();
+    
+    //subscribe for new team added and set the totalTeams in UI
+    g
+      .get("application")
+      .get("user_teams") //all teams are registered in this document
+      .map()
+      .once((data, sole) => {
+        setTotalTeams((prev)=>[...prev,data?.name]);
+      });
+    
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  
 
-  const handleClick = () => {
-    //increase p1 and p3 points by 5 points
+  const handleClick = async () => {
+    let temp = []
+    const m = g.get('test').set(totalTeams.length)
+
+    //increase plaer points by 5 and 10 if he is a captain
     u.get("teams")
       .map()
       .once((t, tid) => {
@@ -87,9 +77,8 @@ function Home({ g, u, k }) {
           .get("players")
           .map()
           .once((p, pid) => {
-            console.log("team points before update : ", actual_team_points);
             let updated_team_points = 0;
-            if (p.id === "p1" || p.id === "p2") {
+            if (p.id === "p1" || p.id === "p2" || p.id === "p3" || p.id === "p4") {
               let mul = 1;
               if (p.captain) {
                 mul = 2;
@@ -101,7 +90,6 @@ function Home({ g, u, k }) {
               //update team points
               updated_team_points = actual_team_points + 5 * mul;
               g.get(tid).put({ points: updated_team_points });
-              console.log("team points after update : ", updated_team_points);
               actual_team_points = updated_team_points;
               //update leaderboard points
               g.get("application")
@@ -109,14 +97,12 @@ function Home({ g, u, k }) {
                 .map()
                 .once((l, lid) => {
                   if (l.team === t?.id) {
-                    g.get(lid).put({ points: updated_team_points });
+                    g.get(lid).put({ points: updated_team_points })
                   }
                 });
             }
           });
       });
-    setLeaderboardTeams([]);
-    getLeaderboard();
   };
   return (
     <>
@@ -128,13 +114,7 @@ function Home({ g, u, k }) {
       />
       {!selected ? (
         <TestMessage g={g} u={u} k={k} setSelected={setSelected} />
-      ) : null}
-      <hr
-        style={{
-          width: "50%",
-        }}
-      />
-      {totalTeams.length && <h3>Total Teams:{totalTeams.length} </h3>}
+      ) : null} 
       <div>
         {totalTeams?.map((item, id) => {
           return <p key={id}>{item}</p>;
@@ -153,6 +133,11 @@ function Home({ g, u, k }) {
               <p>
                 {item.name} - {item.points} points
               </p>
+              {item?.players.map((i,idx)=>{
+                return (
+                  <span key={idx}>{i?.name} - {i?.points} </span>
+                )
+              })}
             </div>
           );
         })}
@@ -168,8 +153,7 @@ function Home({ g, u, k }) {
         k={k}
         teams={leaderboardTeams}
         setLeaderboardTeams={setLeaderboardTeams}
-        getLeaderboard={getLeaderboard}
-      />
+      /> 
     </>
   );
 }

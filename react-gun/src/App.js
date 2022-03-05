@@ -3,8 +3,10 @@ import "gun/sea";
 import { BrowserRouter as Router, Switch, Route } from "react-router-dom";
 import Login from "./components/Login";
 import Register from "./components/Register";
+import Home2 from "./components/Home2";
 import Home from "./components/Home";
 import LandingPage from "./components/LandingPage";
+import BallByBallData from "./components/BallByBallData";
 
 const gun = Gun({
   peers: ["http:localhost:1000/gun"], // Put the relay node that you want here
@@ -29,6 +31,9 @@ function App() {
         </Route>
         <Route path="/home">
           <Home g={gun} u={user} k={salt} />
+        </Route>
+        <Route path="/ball-data">
+          <BallByBallData g={gun} u={user} k={salt} />
         </Route>
       </Switch>
     </Router>
