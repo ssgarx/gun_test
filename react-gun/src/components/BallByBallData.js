@@ -48,14 +48,19 @@ let balls_data = [
 ]
 
 function BallByBallData({g,u,k}) {
-    const [match,setMatch] = useState(1)
+    const [match,setMatch] = useState(3)
     const [balls,setBalls] = useState([])
 
     //subscribe for ball by ball data
     useEffect(()=>{
-        g.get('#match' + match).map().once((data)=>{
+        g.get('#match' + match).map().on((data)=>{
             const d = JSON.parse(data)
-            setBalls((prev)=>[...prev,d])
+            setBalls((prev)=>{
+                if(prev.find((i)=>i.ball == d.ball)){
+                    return [...prev]
+                }
+                return [...prev,d]
+            })
         })
 
     },[])
@@ -65,6 +70,42 @@ function BallByBallData({g,u,k}) {
         const data = (JSON.stringify(balls_data[index]))
         var hash = await SEA.work(balls_data[index], null, null, {name: "SHA-256"});
         g.get('#match' + match).get(hash).put(data)
+
+        switch(index){
+            default:
+            console.log("first")
+                //increase team points by 5 points and 10 if he is a captain
+                let sum = 0
+                u.get('teams').map().get('players').map().once((p,pid)=>{
+                    console.log(p)
+                    let mul = 1
+                    if(p.captain){
+                        mul = 2
+                    }
+                    sum+=mul*5
+                    let actual_points = p.points
+                    let updated_points = actual_points + mul*5
+                    g.get(pid).get('points').put(updated_points,(ack)=>{
+                        if(ack.ok){
+                            u.get('teams').map().once((t,tid)=>{
+                                let actual_team_points = t.points
+                                let updated_team_points = actual_team_points + sum;
+                                g.get(tid).get('points').put(updated_team_points,(ack)=>{
+                                    if(ack.ok){
+                                        g.get('application').get('leaderboard').map().once((l,lid)=>{
+                                            if(l.team == t.id){
+                                                g.get(lid).put({ points: updated_team_points })
+                                            }
+                                        })
+                                    }
+                                })
+                            })
+                        }
+                    })
+                })
+
+                break
+        }
     }
 
     return (

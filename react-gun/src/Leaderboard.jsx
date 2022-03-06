@@ -11,7 +11,6 @@ function Leaderboard({ g, u, k, teams }) {
       <table border="1">
         <tbody>
           <tr>
-            <th>User name</th>
             <th>Team id</th>
             <th>points</th>
             <th>validations</th>
@@ -21,7 +20,6 @@ function Leaderboard({ g, u, k, teams }) {
             .map((t, tid) => {
               return (
                 <tr key={tid}>
-                  <td>{t?.user}</td>
                   <td>{t?.team}</td>
                   <td>{t?.points}</td>
                   <td>{t?.validations}</td>

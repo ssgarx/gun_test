@@ -2,6 +2,7 @@ import React, { useState , useRef} from "react";
 import { useEffect } from "react";
 import Leaderboard from "../Leaderboard";
 import TestMessage from "../TestMessage";
+import BallByBallData from "./BallByBallData";
 require('gun/lib/open')
 
 function Home({ g, u, k }) {
@@ -13,29 +14,35 @@ function Home({ g, u, k }) {
   useEffect(() => {
     //subscribe for leaderboard update  
     g.get('application').get('leaderboard').map().on((l,lid)=>{
-      setLeaderboardTeams((prev)=>[...new Set([...prev,l])])
+      setLeaderboardTeams((prev)=>{
+        // return [...new Set([...prev,l])]
+        if(prev.find((i)=>i.team == l.team)){
+          return [...prev]
+        }
+        return [...prev,l]
+      })
     })
 
     //subscribe for user team update along with their players update
     const getTeams = async () => {
       let temp = [];
-      await u
+      u
         .get("teams")
         .map()
         .on(async (n, id) => {
-          console.log(n)
+          //console.log(n)
           if(n){
             setSelected(true)
           }
           setUserTeams([])
             let temp_ids = new Set()
-            await u
+            u
               .get('teams')
               .get(id)
               .get("players")
               .map()
               .on((player, id) => {
-                console.log(player)
+                //console.log(player)
                 if(!temp_ids.has(id)){
                   temp_ids.add(id)
                   temp.push({
@@ -56,8 +63,14 @@ function Home({ g, u, k }) {
       .get("application")
       .get("user_teams") //all teams are registered in this document
       .map()
-      .once((data, sole) => {
-        setTotalTeams((prev)=>[...prev,data?.name]);
+      .on((data, sole) => {
+        setTotalTeams((prev)=>{
+        // return [...new Set([...prev,l])]
+        if(prev.find((i)=>i.id == data.id)){
+          return [...prev]
+        }
+        return [...prev,data]
+      })
       });
     
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -106,7 +119,9 @@ function Home({ g, u, k }) {
   };
   return (
     <>
-      <button onClick={handleClick}>Fetch ball data</button>
+      <BallByBallData g={g} u={u} k={k} />
+
+      {/* <button onClick={handleClick}>Fetch ball data</button> */}
       <hr
         style={{
           width: "50%",
@@ -117,7 +132,7 @@ function Home({ g, u, k }) {
       ) : null} 
       <div>
         {totalTeams?.map((item, id) => {
-          return <p key={id}>{item}</p>;
+          return <p key={id}>{item?.name} - {item?.points}</p>;
         })}
       </div>
       <hr
